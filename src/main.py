@@ -126,35 +126,58 @@ def handle_signup():
 
 @app.route('/newOrder', methods=['POST'])
 @jwt_required
-def protected():
+def newOrder():
     specific_user_id = get_jwt_identity()
     user = User.query.get(specific_user_id)
     input_data = request.json
-
+    
     new_order= Order(
         data = input_data,
-        user_id = specific_user_id
+        user_id = specific_user_id,
+        working_id=0
     )
-    db.session.add(new_order)
-    new_order.user_id.append(user)
+    db.session.add(new_order)  
     db.session.commit()
     return jsonify(new_order.id),200
 
+@app.route('/working', methods=['POST'])
+@jwt_required
+def working():
+    specific_user_id = get_jwt_identity()
+    input_data = request.json
+    order = Order.query.get(input_data["id"]) 
+
+    order.working_id=specific_user_id
+    order.status = "Working"
+    db.session.commit()
+    return jsonify(order.status),200
+
+@app.route('/done', methods=['POST'])
+@jwt_required
+def doneRequest():
+    specific_user_id = get_jwt_identity()
+    input_data = request.json
+    order = Order.query.get(input_data["id"])
+    if input_data["notes"]:
+        order.notes=input_data["notes"]
+    order.working_id=specific_user_id
+    order.status = "Done"
+    db.session.commit()
+    return jsonify(order.notes),200
+
 @app.route('/allOrders', methods=['GET'])
 def get_all_orders():
-        order_query = Order.query.all()
-        order_list = list(map(lambda each: each.serialize(), order_query))
-        for each in order_list:
-            return each
-        return jsonify(order_list), 200
+    order_query = Order.query.all()
+    user_query = User.query.all()
+    order_list = list(map(lambda each: each.serialize(), order_query))    
+    user_list = list(map(lambda each: each.serialize(), user_query)) 
+    response={
+        "orders" : order_list,
+        "users": user_list
+    }  
+    return jsonify(response), 200
 
 
-
-# @app.route('/orders', methods=['GET'])
-# def get_all_orders():
-#         orders_query = Order.query.all()
-#         contacts_list = list(map(lambda each: each.serialize(), contacts_query))
-#         return jsonify(contacts_list), 200
 
 
 # this only runs if `$ python src/main.py` is executed
